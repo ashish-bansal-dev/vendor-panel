@@ -7,8 +7,8 @@ export const useSignInWithEmailPass = (
   options?: UseMutationOptions<
     | string
     | {
-        location: string
-      },
+      location: string
+    },
     FetchError,
     HttpTypes.AdminSignUpWithEmailPassword
   >
@@ -27,8 +27,9 @@ export const useSignUpWithEmailPass = (
     string,
     FetchError,
     HttpTypes.AdminSignInWithEmailPassword & {
-      confirmPassword: string
-      name: string
+      confirmPassword: string;
+      name: string;
+      type: 'manufacturer' | 'reseller';
     }
   >
 ) => {
@@ -37,6 +38,7 @@ export const useSignUpWithEmailPass = (
     onSuccess: async (_, variables) => {
       const seller = {
         name: variables.name,
+        type: variables.type,
         member: {
           name: variables.name,
           email: variables.email,
