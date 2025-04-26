@@ -26,3 +26,7 @@ dist-ssr
 *.sln
 *.sw?
 .vercel
+.yarn
+.yarnrc.yml
+vite.config.mts.timestamp-1745566967628-8377405002526.mjs
+yarn.lock
