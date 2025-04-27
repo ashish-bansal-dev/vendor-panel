@@ -61,10 +61,10 @@ export const CompanySection = ({ seller }: { seller: StoreVendor }) => {
       </div>
       <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
         <Text size="small" leading="compact" weight="plus">
-          TaxID
+          GSTIN
         </Text>
         <Text size="small" leading="compact">
-          {seller.tax_id || "-"}
+          {seller.gstin || "-"}
         </Text>
       </div>
     </Container>

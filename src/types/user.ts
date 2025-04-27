@@ -24,7 +24,7 @@ export interface StoreVendor {
   postal_code?: string
   city?: string
   country_code?: string
-  tax_id?: string
+  gstin?: string
   store_status?: "ACTIVE" | "SUSPENDED" | "INACTIVE"
 }
 
