@@ -10,21 +10,21 @@ export interface Review {
 }
 
 export interface StoreVendor {
-  id?: string
-  name?: string
-  phone?: string
-  email?: string
-  description?: string
-  handle?: string
-  photo?: string
-  created_at?: string
-  product?: HttpTypes.StoreProduct[]
-  review?: Review | Review[]
-  address_line?: string
-  postal_code?: string
-  city?: string
-  country_code?: string
-  tax_id?: string
+  id?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  description?: string;
+  handle?: string;
+  photo?: string;
+  created_at?: string;
+  product?: HttpTypes.StoreProduct[];
+  review?: Review | Review[];
+  address_line?: string;
+  postal_code?: string;
+  city?: string;
+  country_code?: string;
+  gstin?: string;
 }
 
 export interface TeamMemberProps {
