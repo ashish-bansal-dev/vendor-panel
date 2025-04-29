@@ -14,18 +14,18 @@ const EditStoreSchema = z.object({
   city: z.string().optional(),
   country_code: z.string().optional(),
   gstin: z.string().optional(),
-});
+})
 
 export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
   const { handleSuccess } = useRouteModal()
 
   const form = useForm<z.infer<typeof EditStoreSchema>>({
     defaultValues: {
-      address_line: seller.address_line || '',
-      postal_code: seller.postal_code || '',
-      city: seller.city || '',
-      country_code: seller.country_code || '',
-      gstin: seller.gstin || '',
+      address_line: seller.address_line || "",
+      postal_code: seller.postal_code || "",
+      city: seller.city || "",
+      country_code: seller.country_code || "",
+      gstin: seller.gstin || "",
     },
     resolver: zodResolver(EditStoreSchema),
   })
@@ -107,7 +107,7 @@ export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
               )}
             />
             <Form.Field
-              name='gstin'
+              name="gstin"
               control={form.control}
               render={({ field }) => (
                 <Form.Item>

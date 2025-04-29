@@ -27,9 +27,9 @@ export const useSignUpWithEmailPass = (
     string,
     FetchError,
     HttpTypes.AdminSignInWithEmailPassword & {
-      confirmPassword: string;
-      name: string;
-      type: 'manufacturer' | 'reseller';
+      confirmPassword: string
+      name: string
+      type: "manufacturer" | "reseller"
     }
   >
 ) => {
