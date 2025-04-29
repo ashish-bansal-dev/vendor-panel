@@ -59,8 +59,8 @@ export const CompanySection = ({ seller }: { seller: StoreVendor }) => {
           {seller.country_code || "-"}
         </Text>
       </div>
-      <div className='text-ui-fg-subtle grid grid-cols-2 px-6 py-4'>
-        <Text size='small' leading='compact' weight='plus'>
+      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
+        <Text size="small" leading="compact" weight="plus">
           GSTIN
         </Text>
         <Text size='small' leading='compact'>
