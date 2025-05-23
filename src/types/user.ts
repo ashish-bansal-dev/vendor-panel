@@ -23,9 +23,12 @@ export interface StoreVendor {
   address_line?: string
   postal_code?: string
   city?: string
+  state?: string
   country_code?: string
   gstin?: string
   store_status?: "ACTIVE" | "SUSPENDED" | "INACTIVE"
+  type?: "manufacturer" | "reseller"
+  verification_status?: string
 }
 
 export interface TeamMemberProps {
