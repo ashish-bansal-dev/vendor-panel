@@ -14,6 +14,7 @@ import { useState } from "react"
 const RegisterSchema = z.object({
   name: z.string().min(2, { message: "Name should be a string" }),
   email: z.string().email({ message: "Invalid email" }),
+  phone: z.string().min(10, { message: "Phone number must be at least 10 digits" }),
   password: z.string().min(2, { message: "Password should be a string" }),
   confirmPassword: z.string().min(2, {
     message: "Confirm Password should be a string",
@@ -32,6 +33,7 @@ export const Register = () => {
     defaultValues: {
       name: "",
       email: "",
+      phone: "",
       password: "",
       confirmPassword: "",
       type: "reseller",
@@ -41,7 +43,7 @@ export const Register = () => {
   const { mutateAsync, isPending } = useSignUpWithEmailPass()
 
   const handleSubmit = form.handleSubmit(
-    async ({ name, email, password, confirmPassword, type }) => {
+    async ({ name, email, phone, password, confirmPassword, type }) => {
       if (password !== confirmPassword) {
         form.setError("password", {
           type: "manual",
@@ -59,6 +61,7 @@ export const Register = () => {
         {
           name,
           email,
+          phone,
           password,
           confirmPassword,
           type,
@@ -94,6 +97,7 @@ export const Register = () => {
     form.formState.errors.email?.message ||
     form.formState.errors.password?.message ||
     form.formState.errors.name?.message ||
+    form.formState.errors.phone?.message ||
     form.formState.errors.confirmPassword?.message ||
     form.formState.errors.type?.message
 
@@ -133,7 +137,7 @@ export const Register = () => {
               onSubmit={handleSubmit}
               className="flex w-full flex-col gap-y-6"
             >
-              <div className="flex flex-col gap-y-2">
+              <div className="flex flex-col gap-y-4">
                 <Form.Field
                   control={form.control}
                   name="name"
@@ -143,8 +147,25 @@ export const Register = () => {
                         <Form.Control>
                           <Input
                             {...field}
-                            className="bg-ui-bg-field-component mb-2"
+                            className="bg-ui-bg-field-component"
                             placeholder="Company name"
+                          />
+                        </Form.Control>
+                      </Form.Item>
+                    )
+                  }}
+                />
+                <Form.Field
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => {
+                    return (
+                      <Form.Item>
+                        <Form.Control>
+                          <Input
+                            {...field}
+                            className="bg-ui-bg-field-component"
+                            placeholder="Phone number"
                           />
                         </Form.Control>
                       </Form.Item>
@@ -174,7 +195,6 @@ export const Register = () => {
                   render={({ field }) => {
                     return (
                       <Form.Item>
-                        <Form.Label>{ }</Form.Label>
                         <Form.Control>
                           <Input
                             type="password"
@@ -193,7 +213,6 @@ export const Register = () => {
                   render={({ field }) => {
                     return (
                       <Form.Item>
-                        <Form.Label>{ }</Form.Label>
                         <Form.Control>
                           <Input
                             type="password"
@@ -217,7 +236,7 @@ export const Register = () => {
                             onValueChange={field.onChange}
                             defaultValue={field.value}
                           >
-                            <Select.Trigger className="bg-ui-bg-field-component mt-2">
+                            <Select.Trigger className="bg-ui-bg-field-component">
                               <Select.Value placeholder="Select seller type" />
                             </Select.Trigger>
                             <Select.Content>

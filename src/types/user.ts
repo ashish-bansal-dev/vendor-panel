@@ -15,7 +15,6 @@ export interface StoreVendor {
   phone?: string
   email?: string
   description?: string
-  handle?: string
   photo?: string
   created_at?: string
   product?: HttpTypes.StoreProduct[]
@@ -23,8 +22,12 @@ export interface StoreVendor {
   address_line?: string
   postal_code?: string
   city?: string
+  state?: string
   country_code?: string
   gstin?: string
+  type?: "manufacturer" | "reseller"
+  verification_status?: string
+  handle?: string
 }
 
 export interface TeamMemberProps {
