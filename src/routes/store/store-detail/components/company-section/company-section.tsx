@@ -53,6 +53,14 @@ export const CompanySection = ({ seller }: { seller: StoreVendor }) => {
       </div>
       <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
         <Text size="small" leading="compact" weight="plus">
+          State
+        </Text>
+        <Text size="small" leading="compact">
+          {seller.state || "-"}
+        </Text>
+      </div>
+      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
+        <Text size="small" leading="compact" weight="plus">
           Country
         </Text>
         <Text size="small" leading="compact">
@@ -65,6 +73,33 @@ export const CompanySection = ({ seller }: { seller: StoreVendor }) => {
         </Text>
         <Text size="small" leading="compact">
           {seller.gstin || "-"}
+        </Text>
+      </div>
+      {/* Display Type */}
+      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
+        <Text size="small" leading="compact" weight="plus">
+          Type
+        </Text>
+        <Text size="small" leading="compact">
+          {seller.type || "-"}
+        </Text>
+      </div>
+      {/* Display Verification Status */}
+      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
+        <Text size="small" leading="compact" weight="plus">
+          Verification Status
+        </Text>
+        <Text size="small" leading="compact">
+          {seller.verification_status || "-"}
+        </Text>
+      </div>
+      {/* Display Handle */}
+      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
+        <Text size="small" leading="compact" weight="plus">
+          Handle
+        </Text>
+        <Text size="small" leading="compact">
+          {seller.handle || "-"}
         </Text>
       </div>
     </Container>

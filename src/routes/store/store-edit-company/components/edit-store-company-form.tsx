@@ -12,20 +12,29 @@ const EditStoreSchema = z.object({
   address_line: z.string().optional(),
   postal_code: z.string().optional(),
   city: z.string().optional(),
+  state: z.string().optional(),
   country_code: z.string().optional(),
   gstin: z.string().optional(),
+  handle: z.string().optional(),
 })
+
+// Define a type for the complete form shape including display-only fields
+type EditStoreFormShape = z.infer<typeof EditStoreSchema> & {
+  handle: string;
+};
 
 export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
   const { handleSuccess } = useRouteModal()
 
-  const form = useForm<z.infer<typeof EditStoreSchema>>({
+  const form = useForm<EditStoreFormShape>({
     defaultValues: {
       address_line: seller.address_line || "",
       postal_code: seller.postal_code || "",
       city: seller.city || "",
+      state: seller.state || "",
       country_code: seller.country_code || "",
       gstin: seller.gstin || "",
+      handle: seller.handle || "",
     },
     resolver: zodResolver(EditStoreSchema),
   })
@@ -33,10 +42,19 @@ export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
   const { mutateAsync, isPending } = useUpdateMe()
 
   const handleSubmit = form.handleSubmit(async (values) => {
+    // Construct the payload with only fields from EditStoreSchema
+    const updateData: z.infer<typeof EditStoreSchema> = {
+      address_line: values.address_line,
+      postal_code: values.postal_code,
+      city: values.city,
+      state: values.state,
+      country_code: values.country_code,
+      gstin: values.gstin,
+      handle: values.handle,
+    };
+
     await mutateAsync(
-      {
-        ...values,
-      },
+      updateData,
       {
         onSuccess: () => {
           toast.success("Store updated")
@@ -52,7 +70,7 @@ export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
   return (
     <RouteDrawer.Form form={form}>
       <KeyboundForm onSubmit={handleSubmit} className="flex h-full flex-col">
-        <RouteDrawer.Body>
+        <RouteDrawer.Body className="flex-1 overflow-y-auto max-h-[500px]">
           <div className="flex flex-col gap-y-8">
             <Form.Field
               name="address_line"
@@ -94,6 +112,19 @@ export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
               )}
             />
             <Form.Field
+              name="state"
+              control={form.control}
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>State</Form.Label>
+                  <Form.Control>
+                    <Input {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            <Form.Field
               name="country_code"
               control={form.control}
               render={({ field }) => (
@@ -112,6 +143,19 @@ export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
               render={({ field }) => (
                 <Form.Item>
                   <Form.Label>GSTIN</Form.Label>
+                  <Form.Control>
+                    <Input {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            <Form.Field
+              name="handle"
+              control={form.control}
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>Handle</Form.Label>
                   <Form.Control>
                     <Input {...field} />
                   </Form.Control>
