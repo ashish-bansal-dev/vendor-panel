@@ -114,6 +114,8 @@ export const ProductCreateSchema = z
     })
   })
 
+export type ProductCreateSchemaType = z.infer<typeof ProductCreateSchema>
+
 export const EditProductMediaSchema = z.object({
   media: z.array(MediaSchema),
 })

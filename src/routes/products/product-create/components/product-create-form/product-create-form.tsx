@@ -17,6 +17,7 @@ import { uploadFilesQuery } from "../../../../../lib/client"
 import {
   PRODUCT_CREATE_FORM_DEFAULTS,
   ProductCreateSchema,
+  ProductCreateSchemaType,
 } from "../../constants"
 import { ProductCreateDetailsForm } from "../product-create-details-form"
 import { ProductCreateInventoryKitForm } from "../product-create-inventory-kit-form"
@@ -24,8 +25,8 @@ import { ProductCreateOrganizeForm } from "../product-create-organize-form"
 import { ProductCreateVariantsForm } from "../product-create-variants-form"
 
 enum Tab {
-  DETAILS = "details",
   ORGANIZE = "organize",
+  DETAILS = "details",
   VARIANTS = "variants",
   INVENTORY = "inventory",
 }
@@ -33,6 +34,36 @@ enum Tab {
 type TabState = Record<Tab, ProgressStatus>
 
 const SAVE_DRAFT_BUTTON = "save-draft-button"
+
+const ORGANIZE_TAB_FIELDS: (keyof ProductCreateSchemaType)[] = [
+  "discountable",
+  "type_id",
+  "collection_id",
+  "categories",
+  "tags",
+  "sales_channels",
+  "origin_country",
+  "material",
+  "width",
+  "length",
+  "height",
+  "weight",
+  "mid_code",
+  "hs_code",
+];
+
+const DETAILS_TAB_FIELDS: (keyof ProductCreateSchemaType)[] = [
+  "title",
+  "subtitle",
+  "handle",
+  "description",
+  "media",
+];
+
+const VARIANTS_TAB_FIELDS: (keyof ProductCreateSchemaType)[] = [
+  "options",
+  "variants",
+];
 
 type ProductCreateFormProps = {
   defaultChannel?: HttpTypes.AdminSalesChannel
@@ -44,10 +75,10 @@ export const ProductCreateForm = ({
   defaultChannel,
   store,
 }: ProductCreateFormProps) => {
-  const [tab, setTab] = useState<Tab>(Tab.DETAILS)
+  const [tab, setTab] = useState<Tab>(Tab.ORGANIZE)
   const [tabState, setTabState] = useState<TabState>({
-    [Tab.DETAILS]: "in-progress",
-    [Tab.ORGANIZE]: "not-started",
+    [Tab.ORGANIZE]: "in-progress",
+    [Tab.DETAILS]: "not-started",
     [Tab.VARIANTS]: "not-started",
     [Tab.INVENTORY]: "not-started",
   })
@@ -193,17 +224,26 @@ export const ProductCreateForm = ({
   })
 
   const onNext = async (currentTab: Tab) => {
-    const valid = await form.trigger()
+    let fieldsToValidate: (keyof ProductCreateSchemaType)[] = [];
+    if (currentTab === Tab.ORGANIZE) {
+      fieldsToValidate = ORGANIZE_TAB_FIELDS;
+    } else if (currentTab === Tab.DETAILS) {
+      fieldsToValidate = DETAILS_TAB_FIELDS;
+    } else if (currentTab === Tab.VARIANTS) {
+      fieldsToValidate = VARIANTS_TAB_FIELDS;
+    }
+
+    const valid = await form.trigger(fieldsToValidate);
 
     if (!valid) {
       return
     }
 
-    if (currentTab === Tab.DETAILS) {
-      setTab(Tab.ORGANIZE)
+    if (currentTab === Tab.ORGANIZE) {
+      setTab(Tab.DETAILS)
     }
 
-    if (currentTab === Tab.ORGANIZE) {
+    if (currentTab === Tab.DETAILS) {
       setTab(Tab.VARIANTS)
     }
 
@@ -214,21 +254,21 @@ export const ProductCreateForm = ({
 
   useEffect(() => {
     const currentState = { ...tabState }
-    if (tab === Tab.DETAILS) {
-      currentState[Tab.DETAILS] = "in-progress"
-    }
     if (tab === Tab.ORGANIZE) {
-      currentState[Tab.DETAILS] = "completed"
       currentState[Tab.ORGANIZE] = "in-progress"
     }
-    if (tab === Tab.VARIANTS) {
-      currentState[Tab.DETAILS] = "completed"
+    if (tab === Tab.DETAILS) {
       currentState[Tab.ORGANIZE] = "completed"
+      currentState[Tab.DETAILS] = "in-progress"
+    }
+    if (tab === Tab.VARIANTS) {
+      currentState[Tab.ORGANIZE] = "completed"
+      currentState[Tab.DETAILS] = "completed"
       currentState[Tab.VARIANTS] = "in-progress"
     }
     if (tab === Tab.INVENTORY) {
-      currentState[Tab.DETAILS] = "completed"
       currentState[Tab.ORGANIZE] = "completed"
+      currentState[Tab.DETAILS] = "completed"
       currentState[Tab.VARIANTS] = "completed"
       currentState[Tab.INVENTORY] = "in-progress"
     }
@@ -270,14 +310,35 @@ export const ProductCreateForm = ({
       >
         <ProgressTabs
           value={tab}
-          onValueChange={async (tab) => {
-            const valid = await form.trigger()
+          onValueChange={async (newTabValue) => {
+            const currentTabValue = tab; // Get the current tab before it changes
+            let fieldsToValidate: (keyof ProductCreateSchemaType)[] = [];
 
-            if (!valid) {
-              return
+            if (currentTabValue === Tab.ORGANIZE) {
+              fieldsToValidate = ORGANIZE_TAB_FIELDS;
+            } else if (currentTabValue === Tab.DETAILS) {
+              fieldsToValidate = DETAILS_TAB_FIELDS;
+            } else if (currentTabValue === Tab.VARIANTS) {
+              fieldsToValidate = VARIANTS_TAB_FIELDS;
             }
-
-            setTab(tab as Tab)
+            
+            // Only trigger validation if there are specific fields for the current tab
+            // Or if navigating away from a tab that requires validation to proceed
+            if (fieldsToValidate.length > 0) {
+                 // Check if we are trying to navigate to a tab that is "ahead"
+                 // For now, we only block if current tab validation fails.
+                 // More sophisticated logic could be added to check if newTabValue is a valid next step.
+                const valid = await form.trigger(fieldsToValidate);
+                if (!valid) {
+                    // If validation fails for the current tab's fields, do not switch tabs.
+                    // Check if the newTabValue is actually a different tab
+                    // This prevents getting stuck if a tab is clicked multiple times while invalid
+                    if (newTabValue !== currentTabValue) {
+                        return;
+                    }
+                }
+            }
+            setTab(newTabValue as Tab)
           }}
           className="flex h-full flex-col overflow-hidden"
         >
@@ -285,18 +346,18 @@ export const ProductCreateForm = ({
             <div className="-my-2 w-full border-l">
               <ProgressTabs.List className="justify-start-start flex w-full items-center">
                 <ProgressTabs.Trigger
-                  status={tabState[Tab.DETAILS]}
-                  value={Tab.DETAILS}
-                  className="max-w-[200px] truncate"
-                >
-                  {t("products.create.tabs.details")}
-                </ProgressTabs.Trigger>
-                <ProgressTabs.Trigger
                   status={tabState[Tab.ORGANIZE]}
                   value={Tab.ORGANIZE}
                   className="max-w-[200px] truncate"
                 >
                   {t("products.create.tabs.organize")}
+                </ProgressTabs.Trigger>
+                <ProgressTabs.Trigger
+                  status={tabState[Tab.DETAILS]}
+                  value={Tab.DETAILS}
+                  className="max-w-[200px] truncate"
+                >
+                  {t("products.create.tabs.details")}
                 </ProgressTabs.Trigger>
                 <ProgressTabs.Trigger
                   status={tabState[Tab.VARIANTS]}
@@ -320,15 +381,15 @@ export const ProductCreateForm = ({
           <RouteFocusModal.Body className="size-full overflow-hidden">
             <ProgressTabs.Content
               className="size-full overflow-y-auto"
-              value={Tab.DETAILS}
-            >
-              <ProductCreateDetailsForm form={form} />
-            </ProgressTabs.Content>
-            <ProgressTabs.Content
-              className="size-full overflow-y-auto"
               value={Tab.ORGANIZE}
             >
               <ProductCreateOrganizeForm form={form} />
+            </ProgressTabs.Content>
+            <ProgressTabs.Content
+              className="size-full overflow-y-auto"
+              value={Tab.DETAILS}
+            >
+              <ProductCreateDetailsForm form={form} />
             </ProgressTabs.Content>
             <ProgressTabs.Content
               className="size-full overflow-y-auto"
@@ -396,8 +457,8 @@ const PrimaryButton = ({
   const { t } = useTranslation()
 
   if (
-    (tab === Tab.VARIANTS && !showInventoryTab) ||
-    (tab === Tab.INVENTORY && showInventoryTab)
+    (tab === Tab.INVENTORY && showInventoryTab) ||
+    (tab === Tab.VARIANTS && !showInventoryTab)
   ) {
     return (
       <Button
