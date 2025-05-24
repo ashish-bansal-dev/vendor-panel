@@ -536,7 +536,7 @@
     },
     "fields": {
       "title": {
-        "label": "Title",
+        "label": "Article",
         "hint": "Give your product a short and clear title.<0/>50-60 characters is the recommended length for search engines."
       },
       "subtitle": {
@@ -2816,7 +2816,7 @@
     "default": "Default",
     "lastName": "Last Name",
     "firstName": "First Name",
-    "title": "Title",
+    "title": "Article",
     "customTitle": "Custom title",
     "manageInventory": "Manage inventory",
     "inventoryKit": "Has inventory kit",
