@@ -43,22 +43,7 @@ export const CompanySection = ({ seller }: { seller: StoreVendor }) => {
           {seller.postal_code || "-"}
         </Text>
       </div>
-      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
-        <Text size="small" leading="compact" weight="plus">
-          City
-        </Text>
-        <Text size="small" leading="compact">
-          {seller.city || "-"}
-        </Text>
-      </div>
-      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
-        <Text size="small" leading="compact" weight="plus">
-          State
-        </Text>
-        <Text size="small" leading="compact">
-          {seller.state || "-"}
-        </Text>
-      </div>
+
       <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
         <Text size="small" leading="compact" weight="plus">
           Country
@@ -67,6 +52,26 @@ export const CompanySection = ({ seller }: { seller: StoreVendor }) => {
           {seller.country_code || "-"}
         </Text>
       </div>
+
+      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
+        <Text size="small" leading="compact" weight="plus">
+          State
+        </Text>
+        <Text size="small" leading="compact">
+          {seller.state || "-"}
+        </Text>
+      </div>
+
+      <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
+        <Text size="small" leading="compact" weight="plus">
+          City
+        </Text>
+        <Text size="small" leading="compact">
+          {seller.city || "-"}
+        </Text>
+      </div>
+
+
       <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
         <Text size="small" leading="compact" weight="plus">
           GSTIN
@@ -78,19 +83,19 @@ export const CompanySection = ({ seller }: { seller: StoreVendor }) => {
       {/* Display Type */}
       <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
         <Text size="small" leading="compact" weight="plus">
-          Type
+          Profile Type
         </Text>
         <Text size="small" leading="compact">
-          {seller.type || "-"}
+          {seller.type ? seller.type.charAt(0).toUpperCase() + seller.type.slice(1) : "-"}
         </Text>
       </div>
       {/* Display Verification Status */}
       <div className="text-ui-fg-subtle grid grid-cols-2 px-6 py-4">
         <Text size="small" leading="compact" weight="plus">
-          Verification Status
+          Document Verification
         </Text>
         <Text size="small" leading="compact">
-          {seller.verification_status || "-"}
+          {seller.verification_status ? seller.verification_status.charAt(0).toUpperCase() + seller.verification_status.slice(1) : "-"}
         </Text>
       </div>
       {/* Display Handle */}
