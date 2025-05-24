@@ -69,8 +69,8 @@ export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
 
   return (
     <RouteDrawer.Form form={form}>
-      <KeyboundForm onSubmit={handleSubmit} className="flex h-full flex-col">
-        <RouteDrawer.Body className="flex-1 overflow-y-auto max-h-[500px]">
+      <KeyboundForm onSubmit={handleSubmit} className="flex h-full flex-col overflow-y-auto">
+        <RouteDrawer.Body className="flex-1 overflow-y-auto">
           <div className="flex flex-col gap-y-8">
             <Form.Field
               name="address_line"
@@ -98,32 +98,7 @@ export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
                 </Form.Item>
               )}
             />
-            <Form.Field
-              name="city"
-              control={form.control}
-              render={({ field }) => (
-                <Form.Item>
-                  <Form.Label>City</Form.Label>
-                  <Form.Control>
-                    <Input {...field} />
-                  </Form.Control>
-                  <Form.ErrorMessage />
-                </Form.Item>
-              )}
-            />
-            <Form.Field
-              name="state"
-              control={form.control}
-              render={({ field }) => (
-                <Form.Item>
-                  <Form.Label>State</Form.Label>
-                  <Form.Control>
-                    <Input {...field} />
-                  </Form.Control>
-                  <Form.ErrorMessage />
-                </Form.Item>
-              )}
-            />
+
             <Form.Field
               name="country_code"
               control={form.control}
@@ -137,6 +112,35 @@ export const EditStoreCompanyForm = ({ seller }: { seller: StoreVendor }) => {
                 </Form.Item>
               )}
             />
+
+            <Form.Field
+              name="state"
+              control={form.control}
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>State</Form.Label>
+                  <Form.Control>
+                    <Input {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+
+            <Form.Field
+              name="city"
+              control={form.control}
+              render={({ field }) => (
+                <Form.Item>
+                  <Form.Label>City</Form.Label>
+                  <Form.Control>
+                    <Input {...field} />
+                  </Form.Control>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+
             <Form.Field
               name="gstin"
               control={form.control}
