@@ -8,10 +8,7 @@ import * as zod from "zod"
 
 import { RouteFocusModal, useRouteModal } from "../../../components/modals"
 import { KeyboundForm } from "../../../components/utilities/keybound-form"
-import {
-  useUpdateProductVariant,
-  useUpdateProductVariantsBatch,
-} from "../../../hooks/api/products"
+import { useUpdateProductVariantsBatch } from "../../../hooks/api/products"
 import { useRegions } from "../../../hooks/api/regions"
 import { castNumber } from "../../../lib/cast-number"
 import { VariantPricingForm } from "../common/variant-pricing-form"
@@ -39,11 +36,7 @@ export const PricingEdit = ({
 }) => {
   const { t } = useTranslation()
   const { handleSuccess } = useRouteModal()
-  // const { mutateAsync, isPending } = useUpdateProductVariantsBatch(product.id)
-  const { mutateAsync, isPending } = useUpdateProductVariant(
-    product.id,
-    variantId!
-  )
+  const { mutateAsync, isPending } = useUpdateProductVariantsBatch(product.id)
 
   const { regions } = useRegions({ limit: 9999 })
   const regionsCurrencyMap = useMemo(() => {
@@ -81,7 +74,7 @@ export const PricingEdit = ({
 
   const handleSubmit = form.handleSubmit(async (values) => {
     const reqData = values.variants.map((variant, ind) => ({
-      ...variants[ind],
+      id: variants[ind].id,
       prices: Object.entries(variant.prices || {})
         .filter(
           ([_, value]) => value !== "" && typeof value !== "undefined" // deleted cells
@@ -119,15 +112,7 @@ export const PricingEdit = ({
         }),
     }))
 
-    const data = reqData[0]
-
-    delete data["options"]
-    delete data["product_id"]
-    delete data["created_at"]
-    delete data["updated_at"]
-    delete data["deleted_at"]
-
-    await mutateAsync(data, {
+    await mutateAsync(reqData, {
       onSuccess: () => {
         handleSuccess("..")
       },
