@@ -11,48 +11,98 @@ import {
   Tooltip,
   usePrompt,
 } from "@medusajs/ui"
+import { keepPreviousData } from "@tanstack/react-query"
 import { useCallback, useMemo } from "react"
 import { useTranslation } from "react-i18next"
 
 import { CellContext } from "@tanstack/react-table"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useSearchParams } from "react-router-dom"
 import { DataTable } from "../../../../../components/data-table"
 import { useDataTableDateColumns } from "../../../../../components/data-table/helpers/general/use-data-table-date-columns"
 import { useDataTableDateFilters } from "../../../../../components/data-table/helpers/general/use-data-table-date-filters"
-import { useDeleteVariantLazy } from "../../../../../hooks/api/products"
+import {
+  useDeleteVariantLazy,
+  useProductVariants,
+} from "../../../../../hooks/api/products"
+import { useQueryParams } from "../../../../../hooks/use-query-params"
 import { PRODUCT_VARIANT_IDS_KEY } from "../../../common/constants"
-import { useInventoryItemLevels } from "../../../../../hooks/api"
 
 type ProductVariantSectionProps = {
   product: HttpTypes.AdminProduct
 }
 
 const PAGE_SIZE = 10
+const PREFIX = "pv"
 
 export const ProductVariantSection = ({
   product,
 }: ProductVariantSectionProps) => {
   const { t } = useTranslation()
 
+  const {
+    q,
+    order,
+    offset,
+    allow_backorder,
+    manage_inventory,
+    created_at,
+    updated_at,
+  } = useQueryParams(
+    [
+      "q",
+      "order",
+      "offset",
+      "manage_inventory",
+      "allow_backorder",
+      "created_at",
+      "updated_at",
+    ],
+    PREFIX
+  )
+
   const columns = useColumns(product)
   const filters = useFilters()
   const commands = useCommands()
 
-  const { variants } = product
+  const { variants, count, isPending, isError, error } = useProductVariants(
+    product.id,
+    {
+      q,
+      order: order ? order : "variant_rank",
+      offset: offset ? parseInt(offset) : undefined,
+      limit: PAGE_SIZE,
+      allow_backorder: allow_backorder
+        ? JSON.parse(allow_backorder)
+        : undefined,
+      manage_inventory: manage_inventory
+        ? JSON.parse(manage_inventory)
+        : undefined,
+      created_at: created_at ? JSON.parse(created_at) : undefined,
+      updated_at: updated_at ? JSON.parse(updated_at) : undefined,
+      fields:
+        "title,sku,*options,created_at,updated_at,*inventory_items.inventory.location_levels,inventory_quantity,manage_inventory",
+    },
+    {
+      placeholderData: keepPreviousData,
+    }
+  )
 
-  const count = variants ? variants?.length : 0
+  if (isError) {
+    throw error
+  }
 
   return (
     <Container className="divide-y p-0">
       <DataTable
-        data={variants || undefined}
+        data={variants}
         columns={columns}
         filters={filters}
         rowCount={count}
         getRowId={(row) => row.id}
+        rowHref={(row) => `/products/${product.id}/variants/${row.id}`}
         pageSize={PAGE_SIZE}
+        isLoading={isPending}
         heading={t("products.variants.header")}
-        rowHref={(row) => `variants/${row.id}`}
         emptyState={{
           empty: {
             heading: t("products.variants.empty.heading"),
@@ -67,7 +117,26 @@ export const ProductVariantSection = ({
           label: t("actions.create"),
           to: `variants/create`,
         }}
+        actionMenu={{
+          groups: [
+            {
+              actions: [
+                {
+                  label: t("products.editPrices"),
+                  to: `prices`,
+                  icon: <PencilSquare />,
+                },
+                {
+                  label: t("inventory.stock.action"),
+                  to: `stock`,
+                  icon: <Buildings />,
+                },
+              ],
+            },
+          ],
+        }}
         commands={commands}
+        prefix={PREFIX}
       />
     </Container>
   )
@@ -81,6 +150,17 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
   const navigate = useNavigate()
   const { mutateAsync } = useDeleteVariantLazy(product.id)
   const prompt = usePrompt()
+  const [searchParams] = useSearchParams()
+
+  const tableSearchParams = useMemo(() => {
+    const filtered = new URLSearchParams()
+    for (const [key, value] of searchParams.entries()) {
+      if (key.startsWith(`${PREFIX}_`)) {
+        filtered.append(key, value)
+      }
+    }
+    return filtered
+  }, [searchParams])
 
   const dateColumns = useDataTableDateColumns<HttpTypes.AdminProductVariant>()
 
@@ -143,9 +223,7 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
   const getActions = useCallback(
     (ctx: CellContext<HttpTypes.AdminProductVariant, unknown>) => {
       const variant = ctx.row.original as HttpTypes.AdminProductVariant & {
-        inventory_items: {
-          inventory: HttpTypes.AdminInventoryItem
-        }[]
+        inventory_items: { inventory: HttpTypes.AdminInventoryItem }[]
       }
 
       const mainActions: DataTableAction<HttpTypes.AdminProductVariant>[] = [
@@ -153,7 +231,15 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
           icon: <PencilSquare />,
           label: t("actions.edit"),
           onClick: (row) => {
-            navigate(`edit-variant?variant_id=${row.row.original.id}`)
+            navigate(
+              `edit-variant?variant_id=${row.row.original.id
+              }&${tableSearchParams.toString()}`,
+              {
+                state: {
+                  restore_params: tableSearchParams.toString(),
+                },
+              }
+            )
           },
         },
       ]
@@ -173,9 +259,8 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
         case 0:
           break
         case 1: {
-          const inventoryItemLink = `/inventory/${
-            variant.inventory_items![0].inventory_item_id
-          }`
+          const inventoryItemLink = `/inventory/${variant.inventory_items![0].inventory.id
+            }`
 
           mainActions.push({
             label: t("products.variant.inventory.actions.inventoryItems"),
@@ -209,49 +294,52 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
 
       return [mainActions, secondaryActions]
     },
-    [handleDelete, navigate, t]
+    [handleDelete, navigate, t, tableSearchParams]
   )
 
   const getInventory = useCallback(
     (variant: HttpTypes.AdminProductVariant) => {
       const castVariant = variant as HttpTypes.AdminProductVariant & {
-        inventory_items: {
-          inventory: HttpTypes.AdminInventoryItem
-        }[]
+        inventory_items: { inventory: HttpTypes.AdminInventoryItem }[]
       }
+
+      if (!variant.manage_inventory) {
+        return {
+          text: t("products.variant.inventory.notManaged"),
+          hasInventoryKit: false,
+          notManaged: true,
+        }
+      }
+
+      const quantity = variant.inventory_quantity
 
       const inventoryItems = castVariant.inventory_items
         ?.map((i) => i.inventory)
         .filter(Boolean) as HttpTypes.AdminInventoryItem[]
 
-      const hasInventoryKit = inventoryItems ? inventoryItems.length > 1 : false
+      const hasInventoryKit = inventoryItems.length > 1
 
       const locations: Record<string, boolean> = {}
 
-      inventoryItems?.forEach((i) => {
+      inventoryItems.forEach((i) => {
         i.location_levels?.forEach((l) => {
           locations[l.id] = true
         })
       })
 
-      const { location_levels } = useInventoryItemLevels(
-        variant?.inventory_items?.[0]?.inventory_item_id!
-      )
-
-      const quantity = location_levels?.[0]?.available_quantity || 0
-      const locationCount = location_levels?.[0]?.stock_locations?.length || 0
+      const locationCount = Object.keys(locations).length
 
       const text = hasInventoryKit
         ? t("products.variant.tableItemAvailable", {
-            availableCount: quantity,
-          })
+          availableCount: quantity,
+        })
         : t("products.variant.tableItem", {
-            availableCount: quantity,
-            locationCount,
-            count: locationCount,
-          })
+          availableCount: quantity,
+          locationCount,
+          count: locationCount,
+        })
 
-      return { text, hasInventoryKit, quantity }
+      return { text, hasInventoryKit, quantity, notManaged: false }
     },
     [t]
   )
@@ -275,7 +363,9 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
         id: "inventory",
         header: t("fields.inventory"),
         cell: ({ row }) => {
-          const { text, hasInventoryKit, quantity } = getInventory(row.original)
+          const { text, hasInventoryKit, quantity, notManaged } = getInventory(
+            row.original
+          )
 
           return (
             <Tooltip content={text}>
@@ -283,7 +373,7 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
                 {hasInventoryKit && <Component />}
                 <span
                   className={clx("truncate", {
-                    "text-ui-fg-error": !quantity,
+                    "text-ui-fg-error": !quantity && !notManaged,
                   })}
                 >
                   {text}
@@ -294,6 +384,7 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
         },
         maxSize: 250,
       }),
+      ...dateColumns,
       columnHelper.action({
         actions: getActions,
       }),
