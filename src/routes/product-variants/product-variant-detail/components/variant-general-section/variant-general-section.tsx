@@ -3,6 +3,8 @@ import { HttpTypes } from "@medusajs/types"
 import { Badge, Container, Heading, usePrompt } from "@medusajs/ui"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
+import { useState, useEffect } from "react"
+import QRCode from "qrcode"
 
 import { ActionMenu } from "../../../../../components/common/action-menu"
 import { SectionRow } from "../../../../../components/common/section"
@@ -18,6 +20,16 @@ export function VariantGeneralSection({ variant }: VariantGeneralSectionProps) {
   const navigate = useNavigate()
 
   const hasInventoryKit = variant.inventory?.length > 1
+
+  // Dynamically generate QR code image for the barcode
+  const [qrImage, setQrImage] = useState<string>("")
+  useEffect(() => {
+    if (variant.barcode) {
+      QRCode.toDataURL(variant.barcode, { errorCorrectionLevel: 'H' })
+        .then((url) => setQrImage(url))
+        .catch(() => {})
+    }
+  }, [variant.barcode])
 
   const { mutateAsync } = useDeleteVariant(variant.product_id!, variant.id)
 
@@ -85,6 +97,23 @@ export function VariantGeneralSection({ variant }: VariantGeneralSectionProps) {
       </div>
 
       <SectionRow title={t("fields.sku")} value={variant.sku} />
+      <SectionRow title={t("fields.barcode")} value={
+        variant.barcode ? (
+          <div className="flex items-center gap-2">
+            <span>{variant.barcode}</span>
+            {qrImage && (
+              <img
+                src={qrImage}
+                alt="barcode"
+                style={{ height: 40 }}
+                className="ml-2"
+              />
+            )}
+          </div>
+        ) : (
+          <span className="text-ui-fg-muted">-</span>
+        )
+      } />
       {variant.options?.map((o) => (
         <SectionRow
           key={o.id}

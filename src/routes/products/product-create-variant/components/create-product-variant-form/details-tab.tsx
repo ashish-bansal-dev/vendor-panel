@@ -1,11 +1,11 @@
-import { Heading, Input } from "@medusajs/ui"
-import { UseFormReturn } from "react-hook-form"
+import { Heading, Input, Switch } from "@medusajs/ui"
+import { Form } from "../../../../../components/common/form"
+import { UseFormReturn, useWatch } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
 
 import { HttpTypes } from "@medusajs/types"
 
-import { Form } from "../../../../../components/common/form"
 import { Combobox } from "../../../../../components/inputs/combobox"
 import { CreateProductVariantSchema } from "./constants"
 
@@ -16,6 +16,7 @@ type DetailsTabProps = {
 
 function DetailsTab({ form, product }: DetailsTabProps) {
   const { t } = useTranslation()
+  const manageInventoryEnabled = useWatch({ control: form.control, name: 'manage_inventory', defaultValue: true })
 
   return (
     <div className="flex flex-1 flex-col items-center overflow-y-auto">
@@ -83,37 +84,53 @@ function DetailsTab({ form, product }: DetailsTabProps) {
             />
           ))}
         </div>
-        {/* <div className="flex flex-col gap-y-4">
+        <div className="flex flex-col gap-y-4">
+          <Form.Field
+            control={form.control}
+            name="manage_inventory"
+            render={({ field: { value, onChange, ...field } }) => (
+              <Form.Item>
+                <div className="bg-ui-bg-component shadow-elevation-card-rest flex gap-x-3 rounded-lg p-4">
+                  <Form.Control>
+                    <Switch
+                      checked={value}
+                      onCheckedChange={(checked) => onChange(!!checked)}
+                      {...field}
+                    />
+                  </Form.Control>
+                  <div className="flex flex-col">
+                    <Form.Label>{t("fields.manageInventory")}</Form.Label>
+                    <Form.Hint>{t("products.variant.inventory.manageInventoryHint")}</Form.Hint>
+                  </div>
+                </div>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
+          />
           <Form.Field
             control={form.control}
             name="inventory_kit"
-            render={({ field: { value, onChange, ...field } }) => {
-              return (
-                <Form.Item>
-                  <div className="bg-ui-bg-component shadow-elevation-card-rest flex gap-x-3 rounded-lg p-4">
-                    <Form.Control>
-                      <Switch
-                        checked={value}
-                        onCheckedChange={(checked) => onChange(!!checked)}
-                        {...field}
-                        disabled={!manageInventoryEnabled}
-                      />
-                    </Form.Control>
-                    <div className="flex flex-col">
-                      <Form.Label>
-                        {t("products.variant.inventory.inventoryKit")}
-                      </Form.Label>
-                      <Form.Hint>
-                        {t("products.variant.inventory.inventoryKitHint")}
-                      </Form.Hint>
-                    </div>
+            render={({ field: { value, onChange, ...field } }) => (
+              <Form.Item>
+                <div className="bg-ui-bg-component shadow-elevation-card-rest flex gap-x-3 rounded-lg p-4">
+                  <Form.Control>
+                    <Switch
+                      checked={value}
+                      onCheckedChange={(checked) => onChange(!!checked)}
+                      {...field}
+                      disabled={!manageInventoryEnabled}
+                    />
+                  </Form.Control>
+                  <div className="flex flex-col">
+                    <Form.Label>{t("products.variant.inventory.inventoryKit")}</Form.Label>
+                    <Form.Hint>{t("products.variant.inventory.inventoryKitHint")}</Form.Hint>
                   </div>
-                  <Form.ErrorMessage />
-                </Form.Item>
-              )
-            }}
+                </div>
+                <Form.ErrorMessage />
+              </Form.Item>
+            )}
           />
-        </div> */}
+        </div>
       </div>
     </div>
   )

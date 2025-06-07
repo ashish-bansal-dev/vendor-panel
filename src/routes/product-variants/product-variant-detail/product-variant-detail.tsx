@@ -15,7 +15,7 @@ import { VariantPricesSection } from "./components/variant-prices-section"
 export const ProductVariantDetail = () => {
   const { id, variant_id } = useParams()
   const { product, isLoading, isError, error } = useProduct(id!, {
-    fields: "*variants.inventory_items",
+    fields: "*variants.inventory_items,*variants.barcode,*variants.metadata",
   })
 
   const variant = product?.variants

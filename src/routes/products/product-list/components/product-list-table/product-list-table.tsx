@@ -40,7 +40,6 @@ export const ProductListTable = () => {
     {
       limit: searchParams.limit,
       offset: searchParams.offset,
-      fields: "+thumbnail,*categories",
     },
     {
       initialData,

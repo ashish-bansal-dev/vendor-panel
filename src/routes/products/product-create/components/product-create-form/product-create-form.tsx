@@ -13,7 +13,8 @@ import {
   useExtendableForm,
 } from "../../../../../extensions"
 import { useCreateProduct } from "../../../../../hooks/api/products"
-import { uploadFilesQuery } from "../../../../../lib/client"
+import { uploadFilesQuery, fetchQuery } from "../../../../../lib/client"
+import QRCode from "qrcode"
 import {
   PRODUCT_CREATE_FORM_DEFAULTS,
   ProductCreateSchema,
@@ -73,6 +74,18 @@ export const ProductCreateForm = ({
     configs,
   })
 
+  // Fetch seller handle for barcode prefix
+  const [sellerHandle, setSellerHandle] = useState("")
+  useEffect(() => {
+    fetchQuery("/vendor/sellers/me", { method: "GET" })
+      .then((res: any) => {
+        if (res?.seller?.handle) {
+          setSellerHandle(res.seller.handle)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   const { mutateAsync, isPending } = useCreateProduct()
 
   /**
@@ -89,6 +102,55 @@ export const ProductCreateForm = ({
     () => watchedVariants.some((v) => v.manage_inventory && v.inventory_kit),
     [watchedVariants]
   )
+
+  // Add effect to auto-generate barcodes based on article number and variant options
+  const productArticle = useWatch({
+    control: form.control,
+    name: "title",
+  })
+
+  useEffect(() => {
+    if (!productArticle || !sellerHandle) return;
+    // Compute barcodes and generate QR codes
+    const additional = (form.getValues() as any).additional_data || {};
+    const qrCodes: Record<number, string> = {};
+    const entries = watchedVariants.map((variant, idx) => {
+      // Use dot separator: replace hyphens in handle with dots
+      const sellerKey = sellerHandle.replace(/-/g, '.');
+      const base = `${sellerKey}.${productArticle}`;
+      let code = base;
+      if (variant.inventory_kit) {
+        code = `${base}.bundle`;
+      } else {
+        const opts = variant.options || {};
+        const keys = Object.keys(opts);
+        const colorKey = keys.find((k) => /color/i.test(k)) || keys[0] || '';
+        const sizeKey = keys.find((k) => /size/i.test(k));
+        const color = opts[colorKey] as string || '';
+        code = `${base}.${color}`;
+        if (sizeKey) {
+          const size = (opts[sizeKey] as string) || '';
+          if (size) code = `${code}.${size}`;
+        }
+      }
+      // Set barcode field
+      if (form.getValues(`variants.${idx}.barcode`) !== code) {
+        form.setValue(`variants.${idx}.barcode`, code);
+      }
+      return { idx, code };
+    });
+    // Generate QR codes
+    entries.forEach(({ idx, code }) => {
+      QRCode.toDataURL(code)
+        .then((url) => {
+          qrCodes[idx] = url;
+          // Update additional_data.qr_codes
+          const updated = { ...additional, qr_codes: qrCodes };
+          form.setValue('additional_data', updated);
+        })
+        .catch(() => {});
+    });
+  }, [productArticle, watchedVariants, sellerHandle, form]);
 
   const handleSubmit = form.handleSubmit(async (values, e) => {
     let isDraftSubmission = false
@@ -156,7 +218,7 @@ export const ProductCreateForm = ({
         collection_id: payload.collection_id || undefined,
         shipping_profile_id: undefined,
         enable_variants: undefined,
-        additional_data: undefined,
+        metadata: (payload as any).additional_data,
         categories: payload.categories.map((cat) => ({
           id: cat,
         })),

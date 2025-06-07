@@ -12,8 +12,9 @@ import {
   usePrompt,
 } from "@medusajs/ui"
 import { keepPreviousData } from "@tanstack/react-query"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState, useEffect } from "react"
 import { useTranslation } from "react-i18next"
+import QRCode from "qrcode"
 
 import { CellContext } from "@tanstack/react-table"
 import { useNavigate, useSearchParams } from "react-router-dom"
@@ -80,7 +81,7 @@ export const ProductVariantSection = ({
       created_at: created_at ? JSON.parse(created_at) : undefined,
       updated_at: updated_at ? JSON.parse(updated_at) : undefined,
       fields:
-        "title,sku,*options,created_at,updated_at,*inventory_items.inventory.location_levels,inventory_quantity,manage_inventory",
+        "title,sku,*options,created_at,updated_at,*inventory_items.inventory.location_levels,inventory_quantity,manage_inventory,barcode,metadata",
     },
     {
       placeholderData: keepPreviousData,
@@ -385,6 +386,40 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
         maxSize: 250,
       }),
       ...dateColumns,
+      columnHelper.display({
+        id: "barcode",
+        header: t("fields.barcode"),
+        cell: ({ row }) => {
+          const code = row.original.barcode;
+          if (!code) return <span className="text-ui-fg-muted">-</span>;
+          
+          // Local state for QR code if not in metadata
+          const [generatedQR, setGeneratedQR] = useState<string>("");
+          
+          // Generate QR code on the fly if not in metadata
+          useEffect(() => {
+            if (!row.original.metadata?.qr_code && code) {
+              QRCode.toDataURL(code, { errorCorrectionLevel: 'H' })
+                .then(url => setGeneratedQR(url))
+                .catch(() => {});
+            }
+          }, [code, row.original.metadata?.qr_code]);
+          
+          return (
+            <div className="flex items-center gap-2">
+              <span>{code}</span>
+              {(row.original.metadata?.qr_code || generatedQR) && (
+                <img 
+                  src={row.original.metadata?.qr_code || generatedQR} 
+                  alt="barcode" 
+                  style={{ height: 40 }} 
+                />
+              )}
+            </div>
+          );
+        },
+        maxSize: 250,
+      }),
       columnHelper.action({
         actions: getActions,
       }),

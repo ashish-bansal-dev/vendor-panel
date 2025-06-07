@@ -143,6 +143,17 @@ const useColumns = ({
           return <DataGrid.TextCell context={context} />
         },
       }),
+      columnHelper.column({
+        id: "barcode",
+        name: t("fields.barcode"),
+        header: t("fields.barcode"),
+        field: (context) =>
+          `variants.${context.row.original.originalIndex}.barcode`,
+        type: "text",
+        cell: (context) => {
+          return <DataGrid.ReadonlyCell context={context} />
+        },
+      }),
 
       ...createDataGridPriceColumns<
         ProductCreateVariantSchema,

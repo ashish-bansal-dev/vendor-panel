@@ -1,8 +1,10 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Button, Divider, Heading, Input, Switch, toast } from "@medusajs/ui"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import { z } from "zod"
+import { useEffect, useState, useMemo } from "react"
+import QRCode from "qrcode"
 
 import { HttpTypes } from "@medusajs/types"
 import { Form } from "../../../../../components/common/form"
@@ -16,6 +18,7 @@ import {
   transformNullableFormNumber,
 } from "../../../../../lib/form-helpers"
 import { optionalInt } from "../../../../../lib/validation"
+import { fetchQuery } from "../../../../../lib/client"
 
 type ProductEditVariantFormProps = {
   product: HttpTypes.AdminProduct
@@ -29,6 +32,7 @@ const ProductEditVariantSchema = z.object({
   ean: z.string().optional(),
   upc: z.string().optional(),
   barcode: z.string().optional(),
+  metadata: z.record(z.unknown()).optional(),
   manage_inventory: z.boolean(),
   allow_backorder: z.boolean(),
   weight: optionalInt,
@@ -62,6 +66,7 @@ export const ProductEditVariantForm = ({
       ean: variant?.ean || "",
       upc: variant?.upc || "",
       barcode: variant?.barcode || "",
+      metadata: variant?.metadata || {},
       manage_inventory: true,
       allow_backorder: true,
       weight: variant?.weight || "",
@@ -80,6 +85,65 @@ export const ProductEditVariantForm = ({
     variant?.product_id!,
     variant?.id!
   )
+
+  // Fetch seller handle
+  const [sellerHandle, setSellerHandle] = useState<string>("")
+  useEffect(() => {
+    fetchQuery("/vendor/sellers/me", { method: "GET" })
+      .then((res: any) => {
+        if (res?.seller?.handle) setSellerHandle(res.seller.handle)
+      })
+      .catch(() => {})
+  }, [])
+
+  // Compute barcode based on seller, product title, and options (dot separators)
+  const computedBarcode = useMemo(() => {
+    if (!sellerHandle || !variant) return ""
+    const sellerKey = sellerHandle.replace(/-/g, '.')
+    const base = `${sellerKey}.${product.title}`
+    let code = base
+    if (variant.inventory_items && variant.inventory_items.length > 1) {
+      code = `${base}.bundle`
+    } else {
+      const opts = variant.options || {}
+      const keys = Object.keys(opts)
+      const colorKey = keys.find((k) => /color/i.test(k)) || keys[0] || ''
+      const sizeKey = keys.find((k) => /size/i.test(k))
+      const color = opts[colorKey] as string || ''
+      code = `${base}.${color}`
+      if (sizeKey) {
+        const size = (opts[sizeKey] as string) || ''
+        if (size) code = `${code}.${size}`
+      }
+    }
+    return code
+  }, [sellerHandle, product.title, variant])
+
+  // Watch barcode field and generate QR code image
+  const barcodeVal = useWatch({ control: form.control, name: "barcode", defaultValue: variant?.barcode || "" })
+  const [barcodeImage, setBarcodeImage] = useState<string>("")
+  useEffect(() => {
+    if (!barcodeVal) return
+    QRCode.toDataURL(barcodeVal, { errorCorrectionLevel: 'H' })
+      .then((url) => {
+        setBarcodeImage(url)
+        // Store QR code in metadata
+        const metadata = form.getValues('metadata') || {}
+        metadata.qr_code = url
+        form.setValue('metadata', metadata)
+      })
+      .catch(() => {})
+  }, [barcodeVal])
+
+  // Pre-fill barcode if empty
+  useEffect(() => {
+    if (!barcodeVal && computedBarcode) {
+      form.setValue('barcode', computedBarcode)
+    }
+  }, [barcodeVal, computedBarcode, form])
+
+  // Watch manage_inventory to enable inventory_kit toggle
+  const manageInventoryEnabled = useWatch({ control: form.control, name: 'manage_inventory', defaultValue: true })
 
   const handleSubmit = form.handleSubmit(async (data) => {
     const {
@@ -143,6 +207,51 @@ export const ProductEditVariantForm = ({
                   </Form.Item>
                 )
               }}
+            />
+            <Form.Field
+              control={form.control}
+              name="manage_inventory"
+              render={({ field: { value, onChange, ...field } }) => (
+                <Form.Item>
+                  <div className="bg-ui-bg-component shadow-elevation-card-rest flex gap-x-3 rounded-lg p-4">
+                    <Form.Control>
+                      <Switch
+                        checked={value}
+                        onCheckedChange={(checked) => onChange(!!checked)}
+                        {...field}
+                      />
+                    </Form.Control>
+                    <div className="flex flex-col">
+                      <Form.Label>{t("fields.manageInventory")}</Form.Label>
+                      <Form.Hint>{t("products.variant.inventory.manageInventoryHint")}</Form.Hint>
+                    </div>
+                  </div>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
+            />
+            <Form.Field
+              control={form.control}
+              name="inventory_kit"
+              render={({ field: { value, onChange, ...field } }) => (
+                <Form.Item>
+                  <div className="bg-ui-bg-component shadow-elevation-card-rest flex gap-x-3 rounded-lg p-4">
+                    <Form.Control>
+                      <Switch
+                        checked={value}
+                        onCheckedChange={(checked) => onChange(!!checked)}
+                        {...field}
+                        disabled={!manageInventoryEnabled}
+                      />
+                    </Form.Control>
+                    <div className="flex flex-col">
+                      <Form.Label>{t("products.variant.inventory.inventoryKit")}</Form.Label>
+                      <Form.Hint>{t("products.variant.inventory.inventoryKitHint")}</Form.Hint>
+                    </div>
+                  </div>
+                  <Form.ErrorMessage />
+                </Form.Item>
+              )}
             />
             <Form.Field
               control={form.control}
@@ -251,6 +360,7 @@ export const ProductEditVariantForm = ({
                         <Input {...field} />
                       </Form.Control>
                       <Form.ErrorMessage />
+                      {barcodeImage && <div className="mt-2"><img src={barcodeImage} alt="barcode" style={{ height: 40 }} /></div>}
                     </Form.Item>
                   )
                 }}

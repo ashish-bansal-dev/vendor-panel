@@ -414,13 +414,21 @@ export const useProducts = (
     sort?: string
   }
 ) => {
+  // Ensure barcode and metadata are included in the query
+  const queryWithFields = {
+    ...query,
+    fields: query?.fields 
+      ? `${query.fields},*variants.barcode,*variants.metadata` 
+      : "*variants.barcode,*variants.metadata",
+  }
+
   const { data, ...rest } = useQuery({
     queryFn: () =>
       fetchQuery("/vendor/products", {
         method: "GET",
-        query: query as Record<string, string | number>,
+        query: queryWithFields as Record<string, string | number>,
       }),
-    queryKey: productsQueryKeys.list(query),
+    queryKey: productsQueryKeys.list(queryWithFields),
     ...options,
   })
 
