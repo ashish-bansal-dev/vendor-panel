@@ -86,7 +86,7 @@ export const ProductCreateForm = ({
   })
 
   const showInventoryTab = useMemo(
-    () => watchedVariants.some((v) => v.manage_inventory && v.inventory_kit),
+    () => watchedVariants.some((v) => v.inventory_kit),
     [watchedVariants]
   )
 
@@ -169,6 +169,11 @@ export const ProductCreateForm = ({
           is_default: undefined,
           inventory_kit: undefined,
           inventory: undefined,
+          metadata: {
+            mrp: variant.metadata?.mrp || "",
+            cost_price: variant.metadata?.cost_price || "",
+            images: variant.metadata?.images || "",
+          },
           prices: Object.keys(variant.prices || {}).map((key) => ({
             currency_code: key,
             amount: parseFloat(variant.prices?.[key] as string),
@@ -341,7 +346,7 @@ export const ProductCreateForm = ({
                 // pricePreferences={pricePreferences}
               />
             </ProgressTabs.Content>
-            {showInventoryTab && (
+            {true && (
               <ProgressTabs.Content
                 className="size-full overflow-y-auto"
                 value={Tab.INVENTORY}

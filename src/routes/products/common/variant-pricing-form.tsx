@@ -27,7 +27,7 @@ export const VariantPricingForm = ({ form }: VariantPricingFormProps) => {
 
   const columns = useVariantPriceGridColumns({
     currencies: store?.supported_currencies,
-    regions,
+    // regions,
     pricePreferences,
   })
 
