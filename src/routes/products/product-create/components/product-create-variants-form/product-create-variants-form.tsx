@@ -51,18 +51,21 @@ const CustomRightDrawer = ({
   open,
   onClose,
   children,
+  beforeClose,
 }: {
   open: boolean
   onClose: () => void
+  beforeClose?: () => void
   children: React.ReactNode
 }) => {
   const handleEscapeKey = useCallback(
     (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        beforeClose?.()
         onClose()
       }
     },
-    [onClose]
+    [onClose, beforeClose]
   )
 
   useEffect(() => {
@@ -75,7 +78,12 @@ const CustomRightDrawer = ({
   }, [open, handleEscapeKey])
 
   return (
-    <Drawer open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
+    <Drawer open={open} onOpenChange={(isOpen) => {
+      if (!isOpen) {
+        beforeClose?.()
+        onClose()
+      }
+    }}>
       <Drawer.Content className="!left-auto !right-0">
         {children}
       </Drawer.Content>
@@ -181,6 +189,18 @@ export const ProductCreateVariantsForm = ({
     toast.info("Changes discarded")
   }, [selectedVariantIndex, originalImages])
 
+  const handleDrawerClose = useCallback(() => {
+    if (selectedVariantIndex !== null) {
+      if (unsavedChanges) {
+        saveVariantImages(
+          selectedVariantIndex,
+          variantImages[selectedVariantIndex] || []
+        )
+      }
+      setSelectedVariantIndex(null)
+    }
+  }, [selectedVariantIndex, unsavedChanges, variantImages, saveVariantImages])
+
   const openImageDrawer = useCallback(
     (index: number) => {
       const currentVariants = form.getValues("variants")
@@ -222,6 +242,35 @@ export const ProductCreateVariantsForm = ({
     [form]
   )
 
+  const syncImagesToForm = (index: number, imgs: string[]) => {
+    form.setValue(`variants.${index}.metadata.images`, imgs.join(","), {
+      shouldDirty: true,
+      shouldTouch: true,
+    })
+  }
+
+  const handleImageUpload = async (files: FileType[], variantIndex: number) => {
+    try {
+      const { files: uploadedFiles } = await uploadFilesQuery(files)
+      if (uploadedFiles?.length) {
+        const newImages = [
+          ...(variantImages[variantIndex] || []),
+          ...uploadedFiles.map((f: HttpTypes.AdminFile) => f.url),
+        ]
+        setVariantImages({
+          ...variantImages,
+          [variantIndex]: newImages,
+        })
+        syncImagesToForm(variantIndex, newImages)
+        // Don't save automatically, just update the UI
+        toast.success("Images uploaded successfully")
+      }
+    } catch (error) {
+      console.error("Failed to upload images:", error)
+      toast.error("Failed to upload images")
+    }
+  }
+
   /**
    * NOTE: anything that goes to the datagrid component needs to be memoised otherwise DataGrid will rerender and inputs will loose focus
    */
@@ -257,7 +306,11 @@ export const ProductCreateVariantsForm = ({
         onEditingChange={(editing) => setCloseOnEscape(!editing)}
       />
       {selectedVariantIndex !== null && (
-        <CustomRightDrawer open={true} onClose={handleCancelChanges}>
+        <CustomRightDrawer
+          open={true}
+          beforeClose={handleDrawerClose}
+          onClose={() => setSelectedVariantIndex(null)}
+        >
           <Drawer.Header>
             <Drawer.Title>Variant Images</Drawer.Title>
           </Drawer.Header>
@@ -284,6 +337,7 @@ export const ProductCreateVariantsForm = ({
                           ...variantImages,
                           [selectedVariantIndex]: newImages,
                         })
+                        syncImagesToForm(selectedVariantIndex, newImages)
                         setUnsavedChanges(true)
                       }}
                     >
@@ -310,6 +364,7 @@ export const ProductCreateVariantsForm = ({
                         ...variantImages,
                         [selectedVariantIndex]: newImages,
                       })
+                      syncImagesToForm(selectedVariantIndex, newImages)
                       setUnsavedChanges(true)
                       toast.success("Images uploaded successfully")
                     }
@@ -319,12 +374,6 @@ export const ProductCreateVariantsForm = ({
                   }
                 }}
               />
-              <div className="flex justify-end gap-x-2 mt-4">
-                <Button variant="secondary" onClick={handleCancelChanges}>
-                  Cancel
-                </Button>
-                <Button onClick={handleSaveImages}>Save Images</Button>
-              </div>
             </div>
           </Drawer.Body>
         </CustomRightDrawer>
@@ -358,27 +407,6 @@ const useColumns = ({
   openImageDrawer: (index: number) => void
 }) => {
   const { t } = useTranslation()
-
-  const handleImageUpload = async (files: FileType[], variantIndex: number) => {
-    try {
-      const { files: uploadedFiles } = await uploadFilesQuery(files)
-      if (uploadedFiles?.length) {
-        const newImages = [
-          ...(variantImages[variantIndex] || []),
-          ...uploadedFiles.map((f: HttpTypes.AdminFile) => f.url),
-        ]
-        setVariantImages({
-          ...variantImages,
-          [variantIndex]: newImages,
-        })
-        // Don't save automatically, just update the UI
-        toast.success("Images uploaded successfully")
-      }
-    } catch (error) {
-      console.error("Failed to upload images:", error)
-      toast.error("Failed to upload images")
-    }
-  }
 
   return useMemo(
     () => [

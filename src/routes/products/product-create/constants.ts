@@ -33,6 +33,7 @@ const ProductCreateVariantSchema = z.object({
   variant_rank: z.number(),
   prices: z.record(z.string(), optionalFloat).optional(),
   metadata: z.record(z.string(), z.string()).optional(),
+  media: z.array(MediaSchema).optional(),
   inventory: z
     .array(
       z.object({

@@ -9,10 +9,12 @@ import {
   createDataTableFilterHelper,
   DataTableAction,
   Tooltip,
+  FocusModal,
+  Button,
   usePrompt,
 } from "@medusajs/ui"
 import { keepPreviousData } from "@tanstack/react-query"
-import { useCallback, useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 
 import { CellContext } from "@tanstack/react-table"
@@ -60,7 +62,16 @@ export const ProductVariantSection = ({
     PREFIX
   )
 
-  const columns = useColumns(product)
+  // State and handler for viewing variant media
+  const [showMediaModal, setShowMediaModal] = useState(false)
+  const [mediaUrls, setMediaUrls] = useState<string[]>([])
+  const handleViewMedia = useCallback((variant: HttpTypes.AdminProductVariant) => {
+    const raw = variant.metadata?.images || ""
+    const imgs = raw.split(",").map((s: string) => s.trim()).filter(Boolean)
+    setMediaUrls(imgs)
+    setShowMediaModal(true)
+  }, [])
+  const columns = useColumns(product, handleViewMedia)
   const filters = useFilters()
   const commands = useCommands()
 
@@ -80,7 +91,7 @@ export const ProductVariantSection = ({
       created_at: created_at ? JSON.parse(created_at) : undefined,
       updated_at: updated_at ? JSON.parse(updated_at) : undefined,
       fields:
-        "title,sku,*options,created_at,updated_at,*inventory_items.inventory.location_levels,inventory_quantity,manage_inventory",
+        "title,sku,*options,created_at,updated_at,*inventory_items.inventory.location_levels,inventory_quantity,manage_inventory,metadata",
     },
     {
       placeholderData: keepPreviousData,
@@ -92,60 +103,86 @@ export const ProductVariantSection = ({
   }
 
   return (
-    <Container className="divide-y p-0">
-      <DataTable
-        data={variants}
-        columns={columns}
-        filters={filters}
-        rowCount={count}
-        getRowId={(row) => row.id}
-        rowHref={(row) => `/products/${product.id}/variants/${row.id}`}
-        pageSize={PAGE_SIZE}
-        isLoading={isPending}
-        heading={t("products.variants.header")}
-        emptyState={{
-          empty: {
-            heading: t("products.variants.empty.heading"),
-            description: t("products.variants.empty.description"),
-          },
-          filtered: {
-            heading: t("products.variants.filtered.heading"),
-            description: t("products.variants.filtered.description"),
-          },
-        }}
-        action={{
-          label: t("actions.create"),
-          to: `variants/create`,
-        }}
-        actionMenu={{
-          groups: [
-            {
-              actions: [
-                {
-                  label: t("products.editPrices"),
-                  to: `prices`,
-                  icon: <PencilSquare />,
-                },
-                {
-                  label: t("inventory.stock.action"),
-                  to: `stock`,
-                  icon: <Buildings />,
-                },
-              ],
+    <>
+      <Container className="divide-y p-0">
+        <DataTable
+          data={variants}
+          columns={columns}
+          filters={filters}
+          rowCount={count}
+          getRowId={(row) => row.id}
+          rowHref={(row) => `/products/${product.id}/variants/${row.id}`}
+          pageSize={PAGE_SIZE}
+          isLoading={isPending}
+          heading={t("products.variants.header")}
+          emptyState={{
+            empty: {
+              heading: t("products.variants.empty.heading"),
+              description: t("products.variants.empty.description"),
             },
-          ],
-        }}
-        commands={commands}
-        prefix={PREFIX}
-      />
-    </Container>
+            filtered: {
+              heading: t("products.variants.filtered.heading"),
+              description: t("products.variants.filtered.description"),
+            },
+          }}
+          action={{
+            label: t("actions.create"),
+            to: `variants/create`,
+          }}
+          actionMenu={{
+            groups: [
+              {
+                actions: [
+                  {
+                    label: t("products.editPrices"),
+                    to: `prices`,
+                    icon: <PencilSquare />,
+                  },
+                  {
+                    label: t("inventory.stock.action"),
+                    to: `stock`,
+                    icon: <Buildings />,
+                  },
+                ],
+              },
+            ],
+          }}
+          commands={commands}
+          prefix={PREFIX}
+        />
+      </Container>
+      <FocusModal open={showMediaModal} onOpenChange={(open) => !open && setShowMediaModal(false)}>
+        <FocusModal.Header>{t("media") || "Media"}</FocusModal.Header>
+        <FocusModal.Body>
+          <div className="flex flex-wrap gap-2">
+            {mediaUrls.length > 0 ? (
+              mediaUrls.map((url, idx) => (
+                <img key={idx} src={url} alt={`variant media ${idx}`} className="max-h-64 object-contain" />
+              ))
+            ) : (
+              <p>{t("products.variant.noMedia") || "No media available"}</p>
+            )}
+          </div>
+        </FocusModal.Body>
+        <FocusModal.Footer>
+          <FocusModal.Close asChild>
+            <Button variant="secondary" size="small">
+              {t("actions.close") || "Close"}
+            </Button>
+          </FocusModal.Close>
+        </FocusModal.Footer>
+      </FocusModal>
+    </>
   )
 }
 
 const columnHelper =
   createDataTableColumnHelper<HttpTypes.AdminProductVariant>()
 
-const useColumns = (product: HttpTypes.AdminProduct) => {
+const useColumns = (
+  product: HttpTypes.AdminProduct,
+  handleViewMedia: (variant: HttpTypes.AdminProductVariant) => void
+) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const { mutateAsync } = useDeleteVariantLazy(product.id)
@@ -384,12 +421,29 @@ const useColumns = (product: HttpTypes.AdminProduct) => {
         },
         maxSize: 250,
       }),
+      columnHelper.display({
+        id: "view_media",
+        header: t("media") || "View",
+        cell: ({ row }) => (
+          <Button
+            size="small"
+            variant="secondary"
+            onClick={(e) => {
+              e.stopPropagation()
+              handleViewMedia(row.original)
+            }}
+          >
+            {t("media") || "View"}
+          </Button>
+        ),
+        maxSize: 120,
+      }),
       ...dateColumns,
       columnHelper.action({
         actions: getActions,
       }),
     ]
-  }, [t, optionColumns, dateColumns, getActions, getInventory])
+  }, [t, optionColumns, dateColumns, getActions, getInventory, handleViewMedia])
 }
 
 const filterHelper =

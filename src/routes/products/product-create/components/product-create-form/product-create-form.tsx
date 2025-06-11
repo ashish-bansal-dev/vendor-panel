@@ -139,6 +139,8 @@ export const ProductCreateForm = ({
       }
     }
 
+    // Per-variant media URLs are already stored in variant.metadata.images via the drawer
+
     await mutateAsync(
       {
         ...payload,
@@ -160,25 +162,29 @@ export const ProductCreateForm = ({
         categories: payload.categories.map((cat) => ({
           id: cat,
         })),
-        variants: payload.variants.map((variant) => ({
-          ...variant,
-          sku: variant.sku === "" ? undefined : variant.sku,
-          manage_inventory: true,
-          allow_backorder: false,
-          should_create: undefined,
-          is_default: undefined,
-          inventory_kit: undefined,
-          inventory: undefined,
-          metadata: {
-            mrp: variant.metadata?.mrp || "",
-            cost_price: variant.metadata?.cost_price || "",
-            images: variant.metadata?.images || "",
-          },
-          prices: Object.keys(variant.prices || {}).map((key) => ({
+        variants: payload.variants.map((variant) => {
+          const cleanedPrices = Object.keys(variant.prices || {}).map((key) => ({
             currency_code: key,
             amount: parseFloat(variant.prices?.[key] as string),
-          })),
-        })),
+          }))
+
+          return {
+            title:
+              variant.title && variant.title.trim().length > 0
+                ? variant.title
+                : Object.values(variant.options || {}).join(" / "),
+            options: variant.options,
+            sku: variant.sku === "" ? undefined : variant.sku,
+            manage_inventory: true,
+            allow_backorder: false,
+            metadata: {
+              mrp: variant.metadata?.mrp || "",
+              cost_price: variant.metadata?.cost_price || "",
+              images: variant.metadata?.images || "",
+            },
+            prices: cleanedPrices,
+          }
+        }),
       },
       {
         onSuccess: (data) => {
