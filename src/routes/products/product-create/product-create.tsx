@@ -12,6 +12,8 @@ export const ProductCreate = () => {
   const { sales_channels, isPending: isSalesChannelPending } =
     useSalesChannels()
 
+  const sellerType = (store as any)?.type ?? "manufacturer"
+
   const ready =
     !!store && !isStorePending && !!sales_channels && !isSalesChannelPending
 
@@ -24,7 +26,11 @@ export const ProductCreate = () => {
         <span className="sr-only">{t("products.create.description")}</span>
       </RouteFocusModal.Description>
       {ready && (
-        <ProductCreateForm defaultChannel={sales_channels[0]} store={store} />
+        <ProductCreateForm
+          defaultChannel={sales_channels[0]}
+          store={store}
+          sellerType={sellerType}
+        />
       )}
     </RouteFocusModal>
   )

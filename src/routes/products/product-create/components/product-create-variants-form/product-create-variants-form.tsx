@@ -5,7 +5,6 @@ import { useTranslation } from "react-i18next"
 
 import {
   createDataGridHelper,
-  createDataGridPriceColumns,
   DataGrid,
 } from "../../../../../components/data-grid"
 import { useRouteModal } from "../../../../../components/modals"
@@ -20,6 +19,7 @@ type ProductCreateVariantsFormProps = {
   regions?: HttpTypes.AdminRegion[]
   store?: HttpTypes.AdminStore
   pricePreferences?: HttpTypes.AdminPricePreference[]
+  sellerType?: "manufacturer" | "reseller"
 }
 
 export const ProductCreateVariantsForm = ({
@@ -27,6 +27,7 @@ export const ProductCreateVariantsForm = ({
   regions,
   store,
   pricePreferences,
+  sellerType = "manufacturer",
 }: ProductCreateVariantsFormProps) => {
   const { setCloseOnEscape } = useRouteModal()
 
@@ -52,9 +53,7 @@ export const ProductCreateVariantsForm = ({
    */
   const columns = useColumns({
     options,
-    currencies: currencyCodes,
-    regions,
-    pricePreferences,
+    sellerType,
   })
 
   const variantData = useMemo(() => {
@@ -81,21 +80,15 @@ export const ProductCreateVariantsForm = ({
   )
 }
 
-const columnHelper = createDataGridHelper<
-  ProductCreateVariantSchema,
-  ProductCreateSchemaType
->()
+type VariantRow = ProductCreateVariantSchema & { originalIndex: number }
+const columnHelper = createDataGridHelper<VariantRow, ProductCreateSchemaType>()
 
 const useColumns = ({
   options,
-  currencies = [],
-  regions = [],
-  pricePreferences = [],
+  sellerType,
 }: {
   options: ProductCreateOptionSchema[]
-  currencies?: string[]
-  regions?: HttpTypes.AdminRegion[]
-  pricePreferences?: HttpTypes.AdminPricePreference[]
+  sellerType: "manufacturer" | "reseller"
 }) => {
   const { t } = useTranslation()
 
@@ -144,22 +137,38 @@ const useColumns = ({
         },
       }),
 
-      ...createDataGridPriceColumns<
-        ProductCreateVariantSchema,
-        ProductCreateSchemaType
-      >({
-        currencies,
-        regions,
-        pricePreferences,
-        getFieldName: (context, value) => {
-          if (context.column.id?.startsWith("currency_prices")) {
-            return `variants.${context.row.original.originalIndex}.prices.${value}`
-          }
-          return `variants.${context.row.original.originalIndex}.prices.${value}`
-        },
-        t,
+      // Actor-specific price columns (all INR)
+      columnHelper.column({
+        id: "admin_price",
+        header: t("Admin price (INR)"),
+        field: (ctx) =>
+          `variants.${ctx.row.original.originalIndex}.vendor_prices.admin`,
+        type: "number",
+        cell: (ctx) => <DataGrid.TextCell context={ctx} />,
+      }),
+
+      ...(sellerType === "manufacturer"
+        ? [
+            columnHelper.column({
+              id: "reseller_price",
+              header: t("Reseller price (INR)"),
+              field: (ctx) =>
+                `variants.${ctx.row.original.originalIndex}.vendor_prices.reseller`,
+              type: "number",
+              cell: (ctx) => <DataGrid.TextCell context={ctx} />,
+            }),
+          ]
+        : []),
+
+      columnHelper.column({
+        id: "customer_price",
+        header: t("Customer price (INR)"),
+        field: (ctx) =>
+          `variants.${ctx.row.original.originalIndex}.vendor_prices.customer`,
+        type: "number",
+        cell: (ctx) => <DataGrid.TextCell context={ctx} />,
       }),
     ],
-    [currencies, regions, options, pricePreferences, t]
+    [options, t, sellerType]
   )
 }

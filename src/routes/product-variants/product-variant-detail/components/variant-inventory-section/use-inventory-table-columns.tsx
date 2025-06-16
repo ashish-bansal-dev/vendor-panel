@@ -6,9 +6,10 @@ import { useMemo } from "react"
 import { useTranslation } from "react-i18next"
 
 export interface ExtendedInventoryItem {
+  id: string
   required_quantity: number
-  variant: ProductVariantDTO[] & {
-    inventory_items: any[]
+  variant: ProductVariantDTO & {
+    inventory_items?: any[]
     id: string
   }
 }

@@ -3,11 +3,7 @@ import { useMemo } from "react"
 import { UseFormReturn, useWatch } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 
-import {
-  DataGrid,
-  createDataGridHelper,
-  createDataGridPriceColumns,
-} from "../../../components/data-grid"
+import { DataGrid, createDataGridHelper } from "../../../components/data-grid"
 import { useRouteModal } from "../../../components/modals/index"
 import { usePricePreferences } from "../../../hooks/api/price-preferences"
 import { useRegions } from "../../../hooks/api/regions.tsx"
@@ -55,17 +51,19 @@ const useVariantPriceGridColumns = ({
   currencies = [],
   regions = [],
   pricePreferences = [],
+  sellerType = "manufacturer",
 }: {
   currencies?: HttpTypes.AdminStore["supported_currencies"]
   regions?: HttpTypes.AdminRegion[]
   pricePreferences?: HttpTypes.AdminPricePreference[]
+  sellerType?: "manufacturer" | "reseller"
 }) => {
   const { t } = useTranslation()
 
   return useMemo(() => {
     return [
       columnHelper.column({
-        id: t("fields.title"),
+        id: "title",
         header: t("fields.title"),
         cell: (context) => {
           const entity = context.row.original
@@ -79,21 +77,33 @@ const useVariantPriceGridColumns = ({
         },
         disableHiding: true,
       }),
-      ...createDataGridPriceColumns<
-        HttpTypes.AdminProductVariant,
-        ProductCreateSchemaType
-      >({
-        currencies: currencies.map((c) => c.currency_code),
-        regions,
-        pricePreferences,
-        getFieldName: (context, value) => {
-          if (context.column.id?.startsWith("currency_prices")) {
-            return `variants.${context.row.index}.prices.${value}`
-          }
-          return `variants.${context.row.index}.prices.${value}`
-        },
-        t,
+      columnHelper.column({
+        id: "admin_price",
+        header: "Admin price (INR)",
+        field: (ctx) => `variants.${ctx.row.index}.vendor_prices.admin` as any,
+        type: "number",
+        cell: (ctx) => <DataGrid.TextCell context={ctx} />,
+      }),
+      ...(sellerType === "manufacturer"
+        ? [
+            columnHelper.column({
+              id: "reseller_price",
+              header: "Reseller price (INR)",
+              field: (ctx) =>
+                `variants.${ctx.row.index}.vendor_prices.reseller` as any,
+              type: "number",
+              cell: (ctx) => <DataGrid.TextCell context={ctx} />,
+            }),
+          ]
+        : []),
+      columnHelper.column({
+        id: "customer_price",
+        header: "Customer price (INR)",
+        field: (ctx) =>
+          `variants.${ctx.row.index}.vendor_prices.customer` as any,
+        type: "number",
+        cell: (ctx) => <DataGrid.TextCell context={ctx} />,
       }),
     ]
-  }, [t, currencies, regions, pricePreferences])
+  }, [t, currencies, regions, pricePreferences, sellerType])
 }

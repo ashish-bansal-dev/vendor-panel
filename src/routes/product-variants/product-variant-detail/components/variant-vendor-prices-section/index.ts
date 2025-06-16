@@ -1,0 +1,1 @@
+export * from './variant-vendor-prices-section' 

@@ -32,6 +32,13 @@ const ProductCreateVariantSchema = z.object({
   options: z.record(z.string(), z.string()),
   variant_rank: z.number(),
   prices: z.record(z.string(), optionalFloat).optional(),
+  vendor_prices: z
+    .object({
+      admin: optionalFloat,
+      reseller: optionalFloat,
+      customer: optionalFloat,
+    })
+    .optional(),
   inventory: z
     .array(
       z.object({

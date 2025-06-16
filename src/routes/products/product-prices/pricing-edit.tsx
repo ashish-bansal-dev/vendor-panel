@@ -1,7 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod"
 import { HttpTypes } from "@medusajs/types"
 import { Button } from "@medusajs/ui"
-import { useMemo } from "react"
+import { useEffect } from "react"
 import { useForm } from "react-hook-form"
 import { useTranslation } from "react-i18next"
 import * as zod from "zod"
@@ -9,14 +9,18 @@ import * as zod from "zod"
 import { RouteFocusModal, useRouteModal } from "../../../components/modals"
 import { KeyboundForm } from "../../../components/utilities/keybound-form"
 import { useUpdateProductVariantsBatch } from "../../../hooks/api/products"
-import { useRegions } from "../../../hooks/api/regions"
 import { castNumber } from "../../../lib/cast-number"
+import { fetchQuery } from "../../../lib/client"
 import { VariantPricingForm } from "../common/variant-pricing-form"
+import { useUpsertVendorPricesBatch } from "../../../hooks/api/vendor-variant-prices"
 
 export const UpdateVariantPricesSchema = zod.object({
   variants: zod.array(
     zod.object({
       prices: zod
+        .record(zod.string(), zod.string().or(zod.number()).optional())
+        .optional(),
+      vendor_prices: zod
         .record(zod.string(), zod.string().or(zod.number()).optional())
         .optional(),
     })
@@ -36,23 +40,12 @@ export const PricingEdit = ({
 }) => {
   const { t } = useTranslation()
   const { handleSuccess } = useRouteModal()
-  const { mutateAsync, isPending } = useUpdateProductVariantsBatch(product.id)
+  const upsertVendorPricesBatch = useUpsertVendorPricesBatch()
 
-  const { regions } = useRegions({ limit: 9999 })
-  const regionsCurrencyMap = useMemo(() => {
-    if (!regions?.length) {
-      return {}
-    }
-
-    return regions.reduce((acc, reg) => {
-      acc[reg.id] = reg.currency_code
-      return acc
-    }, {})
-  }, [regions])
-
-  const variants = variantId
-    ? product.variants?.filter((v) => v.id === variantId)
-    : product.variants
+  const variants =
+    (variantId
+      ? product.variants?.filter((v) => v.id === variantId)
+      : product.variants) || []
 
   const form = useForm<UpdateVariantPricesSchemaType>({
     defaultValues: {
@@ -66,57 +59,75 @@ export const PricingEdit = ({
           }
           return acc
         }, {}),
+        vendor_prices: {},
       })) as any,
     },
 
     resolver: zodResolver(UpdateVariantPricesSchema, {}),
   })
 
-  const handleSubmit = form.handleSubmit(async (values) => {
-    const reqData = values.variants.map((variant, ind) => ({
-      id: variants[ind].id,
-      prices: Object.entries(variant.prices || {})
-        .filter(
-          ([_, value]) => value !== "" && typeof value !== "undefined" // deleted cells
+  // Pre-fill vendor actor prices
+  useEffect(() => {
+    async function loadVendorPrices() {
+      const updated = [...(variants || [])].map(() => ({
+        admin: "",
+        reseller: "",
+        customer: "",
+      }))
+
+      try {
+        const { prices } = await fetchQuery(`/vendor/variants/prices`, {
+          method: "GET",
+          query: { variant_ids: variants.map((v) => v.id).join(",") },
+        })
+
+        prices.forEach((p: any) => {
+          const idx = variants.findIndex((v) => v.id === p.variant_id)
+          if (idx === -1) return
+          if (p.buyer_type === "admin") updated[idx].admin = p.price
+          if (p.buyer_type === "reseller") updated[idx].reseller = p.price
+          if (p.buyer_type === "customer") updated[idx].customer = p.price
+        })
+      } catch {}
+
+      updated.forEach((vals, idx) => {
+        form.setValue(
+          `variants.${idx}.vendor_prices.admin` as any,
+          vals.admin as any
         )
-        .map(([currencyCodeOrRegionId, value]: any) => {
-          const regionId = currencyCodeOrRegionId.startsWith("reg_")
-            ? currencyCodeOrRegionId
-            : undefined
-          const currencyCode = currencyCodeOrRegionId.startsWith("reg_")
-            ? regionsCurrencyMap[regionId]
-            : currencyCodeOrRegionId
+        form.setValue(
+          `variants.${idx}.vendor_prices.reseller` as any,
+          vals.reseller as any
+        )
+        form.setValue(
+          `variants.${idx}.vendor_prices.customer` as any,
+          vals.customer as any
+        )
+      })
+    }
 
-          let existingId = undefined
+    loadVendorPrices()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
-          if (regionId) {
-            existingId = variants?.[ind]?.prices?.find(
-              (p) => p.rules["region_id"] === regionId
-            )?.id
-          } else {
-            existingId = variants?.[ind]?.prices?.find(
-              (p) =>
-                p.currency_code === currencyCode &&
-                Object.keys(p.rules ?? {}).length === 0
-            )?.id
-          }
-
-          const amount = castNumber(value)
-
-          return {
-            id: existingId,
-            currency_code: currencyCode,
-            amount,
-            ...(regionId ? { rules: { region_id: regionId } } : {}),
-          }
-        }),
+  const handleSubmit = form.handleSubmit(async (values) => {
+    // Build vendor price payload map separate from core update
+    const vendorPriceUpdates = values.variants.map((variant, ind) => ({
+      id: variants[ind].id,
+      vendor_prices: Object.entries((variant as any).vendor_prices || {})
+        .filter(([, v]) => v !== "" && v !== undefined && v !== null)
+        .map(([buyer_type, price]) => ({
+          buyer_type,
+          price: castNumber(price as any),
+        })),
     }))
 
-    await mutateAsync(reqData, {
-      onSuccess: () => {
-        handleSuccess("..")
-      },
+    await upsertVendorPricesBatch.mutateAsync({
+      prices: vendorPriceUpdates.flatMap((vp) =>
+        vp.vendor_prices.map((p) => ({ ...p, variant_id: vp.id }))
+      ),
     })
+    handleSuccess("..")
   })
 
   return (
@@ -137,7 +148,7 @@ export const PricingEdit = ({
               type="submit"
               variant="primary"
               size="small"
-              isLoading={isPending}
+              isLoading={upsertVendorPricesBatch.isPending}
             >
               {t("actions.save")}
             </Button>

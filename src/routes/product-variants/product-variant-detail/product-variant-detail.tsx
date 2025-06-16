@@ -11,6 +11,7 @@ import {
   VariantInventorySection,
 } from "./components/variant-inventory-section"
 import { VariantPricesSection } from "./components/variant-prices-section"
+import { VariantVendorPricesSection } from "./components/variant-vendor-prices-section/variant-vendor-prices-section"
 
 export const ProductVariantDetail = () => {
   const { id, variant_id } = useParams()
@@ -62,7 +63,8 @@ export const ProductVariantDetail = () => {
         )}
       </TwoColumnPage.Main>
       <TwoColumnPage.Sidebar>
-        <VariantPricesSection variant={variant} />
+        {/* <VariantPricesSection variant={variant} /> */}
+        <VariantVendorPricesSection variant={variant} />
       </TwoColumnPage.Sidebar>
     </TwoColumnPage>
   )

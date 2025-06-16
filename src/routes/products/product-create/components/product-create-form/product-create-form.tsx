@@ -38,11 +38,13 @@ type ProductCreateFormProps = {
   defaultChannel?: HttpTypes.AdminSalesChannel
   store?: HttpTypes.AdminStore
   pricePreferences?: HttpTypes.AdminPricePreference[]
+  sellerType: "manufacturer" | "reseller"
 }
 
 export const ProductCreateForm = ({
   defaultChannel,
   store,
+  sellerType,
 }: ProductCreateFormProps) => {
   const [tab, setTab] = useState<Tab>(Tab.DETAILS)
   const [tabState, setTabState] = useState<TabState>({
@@ -160,23 +162,33 @@ export const ProductCreateForm = ({
         categories: payload.categories.map((cat) => ({
           id: cat,
         })),
-        variants: payload.variants.map((variant) => ({
-          ...variant,
-          sku: variant.sku === "" ? undefined : variant.sku,
-          manage_inventory: true,
-          allow_backorder: false,
-          should_create: undefined,
-          is_default: undefined,
-          inventory_kit: undefined,
-          inventory: undefined,
-          prices: Object.keys(variant.prices || {}).map((key) => ({
-            currency_code: key,
-            amount: parseFloat(variant.prices?.[key] as string),
-          })),
-        })),
+        variants: payload.variants.map((variant) => {
+          return {
+            ...variant,
+            sku: variant.sku === "" ? undefined : variant.sku,
+            manage_inventory: true,
+            allow_backorder: false,
+            should_create: undefined,
+            is_default: undefined,
+            inventory_kit: undefined,
+            inventory: undefined,
+            prices: Object.keys(variant.prices || {}).map((key) => ({
+              currency_code: key,
+              amount: Number(variant.prices?.[key]),
+            })),
+            vendor_prices: Object.entries(variant.vendor_prices || {})
+              .filter(
+                ([, val]) => val !== undefined && val !== "" && val !== null
+              )
+              .map(([buyer_type, price]) => ({
+                buyer_type,
+                price: Number(price),
+              })),
+          }
+        }),
       },
       {
-        onSuccess: (data) => {
+        onSuccess: async (data) => {
           toast.success(
             t("products.create.successToast", {
               title: data.product.title,
@@ -337,8 +349,7 @@ export const ProductCreateForm = ({
               <ProductCreateVariantsForm
                 form={form}
                 store={store}
-                // regions={regions}
-                // pricePreferences={pricePreferences}
+                sellerType={sellerType}
               />
             </ProgressTabs.Content>
             {showInventoryTab && (
